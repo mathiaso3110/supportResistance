@@ -5,7 +5,10 @@ import matplotlib.pyplot as plt
 
 
 # Prices input
-prices = [1, 3, 2, 3, 4, 2, 5, 4, 3]
+prices = [[1, 3, 2, 3, 4, 2, 5, 4, 3], [8,7,6,7,6,5,6,5,4], [8,7,6,7,8,6,7,8,6],
+         [13,14,16,10,8,9,12,6,9,4,7], [14,10,15,10,12,14,15,13,12,10,12,13,14.5,14],
+         [3,6,4,7,6,4,6,8,6,7,9,6,7], [10,9,6,11,10,10,7,13,12,10,10,9,8,12,14,10]]
+
 
 # HELPER FUNCTIONS
 # Returns a list with len(j) items 0..len(j)-1
@@ -40,7 +43,7 @@ def regressionAnalysis(x_values, y_values):
 
         sess.run(tf.global_variables_initializer())
 
-        for i in range(2000):
+        for i in range(3000):
 
             sess.run(train, feed_dict={x: x_values, y: y_values})
 
@@ -95,7 +98,7 @@ def resistanceLine(prices, over):
     # The regression analysis for top points
     overPrices = getPrices(over, prices)
     a2, b2 = regressionAnalysis(over, overPrices)
-    tempB = b2 * 0.95
+    tempB = b2 - 0.25
     over, _ = splitList(over, prices, a2, tempB)
 
 
@@ -111,7 +114,7 @@ def resistanceLine(prices, over):
 
         price = prices[i]
 
-        if price > applyFunc(a2, b2, i):
+        if price > applyFunc(a2, tempB, i):
             tempPoints.append((price, i))
         elif not len(tempPoints) == 0:
             topPoints.append(max(tempPoints))
@@ -173,7 +176,9 @@ def supportLine(prices, under):
 
 
 # Calculates and displays the support and resistance lines
-allIndices, topIndices, buttonIndices = middleLine(prices)
-ra, rb = resistanceLine(prices, topIndices)
-sa, sb = supportLine(prices, buttonIndices)
-showPlot(allIndices, prices, (ra, rb), (sa, sb))
+for pricesList in prices:
+    allIndices, topIndices, buttonIndices = middleLine(pricesList)
+    ra, rb = resistanceLine(pricesList, topIndices)
+    sa, sb = supportLine(pricesList, buttonIndices)
+    showPlot(allIndices, pricesList, (ra, rb), (sa, sb))
+
