@@ -4,13 +4,20 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 
 
+# Prices input
+prices = [1, 3, 2, 3, 4, 2, 5, 4, 3]
+
+# HELPER FUNCTIONS
+# Returns a list with len(j) items 0..len(j)-1
 def getIndices(j):
 
     return ([i for i in range(len(j))])
 
+# Gets the prices with indices as input
 def getPrices(j, prices):
     return [prices[i] for i in j]
 
+# Does a regression analysis
 def regressionAnalysis(x_values, y_values):
     tf.reset_default_graph()
 
@@ -41,10 +48,12 @@ def regressionAnalysis(x_values, y_values):
 
         return float("%.2f" % a), float("%.2f" % b)
 
+# Applies a linear funtion to a x value
 def applyFunc(a, b, x):
 
     return a * x + b
 
+# Splits a list in two, over and under a linear funtion (a, b)
 def splitList(indices, myList, a, b):
     over = []
     under = []
@@ -60,6 +69,7 @@ def splitList(indices, myList, a, b):
 
     return over, under
 
+# Displays the graph with args as (a, b) values
 def showPlot(indices, prices, *args):
     plt.plot(indices, prices)
     plt.xlabel("time")
@@ -70,49 +80,100 @@ def showPlot(indices, prices, *args):
     plt.show()
 
 
-prices = [1, 3, 2, 3, 4, 2, 5, 4, 3]
 
-# 1. regression analysis for all points
-indices = getIndices(prices)
-a1, b1 = regressionAnalysis(indices, prices)
-# showPlot(indices, prices, (a1, b1))
-over, under = splitList(indices, prices, a1, b1)
+def middleLine(prices):
+    # Regression analysis of the whole graph
+    indices = getIndices(prices)
+    a1, b1 = regressionAnalysis(indices, prices)
+    # Splits the list in two, over and under the function  (indices)
+    over, under = splitList(indices, prices, a1, b1)
+    return indices, over, under
 
-# 2a. regression analysis for top points
-# Depending on the volatility of the stock adjust how many times you do regression analysis
-# Or change the b value to move the function down
-# Or move the function down no matter what to make sure also to get the points a bit under the function(change b)
-overPrices = getPrices(over, prices)
-a2, b2 = regressionAnalysis(over, overPrices)
+def resistanceLine(prices, over):
+
+    # RESISTANCE LINE
+    # The regression analysis for top points
+    overPrices = getPrices(over, prices)
+    a2, b2 = regressionAnalysis(over, overPrices)
+    tempB = b2 * 0.95
+    over, _ = splitList(over, prices, a2, tempB)
 
 
-# Gets the max top points for the second function
+    # Gets the max top points for the second function
+    topPoints = []
+    tempPoints = []
+    lastI = -1
 
-topPoints = []
-tempPoints = []
-lastI = -1
+    for i in over:
+        if not len(tempPoints) == 0 and not lastI + 1 == i:
+            topPoints.append(max(tempPoints))
+            tempPoints = []
 
-for i in over:
-    if not len(tempPoints) == 0 and not lastI + 1 == i:
-        topPoints.append(max(tempPoints))
-        tempPoints = []
+        price = prices[i]
 
-    price = prices[i]
+        if price > applyFunc(a2, b2, i):
+            tempPoints.append((price, i))
+        elif not len(tempPoints) == 0:
+            topPoints.append(max(tempPoints))
+            tempPoints = []
 
-    if price > applyFunc(a2, b2, i):
-        tempPoints.append((price, i))
-    elif not len(tempPoints) == 0:
-        topPoints.append(max(tempPoints))
-        tempPoints = []
-    
-    lastI = i
+        if i == over[-1] and not len(tempPoints) == 0:
+            topPoints.append(max(tempPoints))
 
-print(topPoints)
-# showPlot(indices, prices, (a1, b1), (a2, b2))
+        lastI = i
 
-spikesPrices = [i[0] for i in topPoints]
-spikesIndices = [i[1] for i in topPoints]
-print(spikesIndices)
+    # Splits the list into prices and indices
+    spikesPrices = [i[0] for i in topPoints]
+    spikesIndices = [i[1] for i in topPoints]
 
-a3, b3 = regressionAnalysis(spikesIndices, spikesPrices)
-showPlot(indices, prices, (a3, b3))
+    # Resistance line
+    a3, b3 = regressionAnalysis(spikesIndices, spikesPrices)
+
+    return a3, b3
+
+def supportLine(prices, under):
+    # SUPPORT LINE
+    # Creates the second regression analysis for support line
+    underPrices = getPrices(under, prices)
+    a4, b4 = regressionAnalysis(under, underPrices)
+    tempB = b4 + 0.25
+    _, under = splitList(under, prices, a4, tempB)
+
+    # Gets all the lowest points
+    lowPoints = []
+    tempPoints = []
+    lastI = -1
+    for i in under:
+        if not len(tempPoints) == 0 and not lastI + 1 == i:
+            lowPoints.append(min(tempPoints))
+            tempPoints = []
+
+        price = prices[i]
+
+        if price < applyFunc(a4, tempB, i):
+            tempPoints.append((price,i))
+        elif not len(tempPoints) == 0:
+            lowPoints.append(min(tempPoints))
+            tempPoints = []
+
+        lastI = i
+        if i == under[-1] and not len(tempPoints) == 0:
+            lowPoints.append(min(tempPoints))
+
+    # Splits the indices and prices up
+    dropPrices = [i[0] for i in lowPoints]
+    dropIndices = [i[1] for i in lowPoints]
+
+    # Support line
+    a5, b5 = regressionAnalysis(dropIndices, dropPrices)
+
+    return a5, b5
+
+
+
+
+# Calculates and displays the support and resistance lines
+allIndices, topIndices, buttonIndices = middleLine(prices)
+ra, rb = resistanceLine(prices, topIndices)
+sa, sb = supportLine(prices, buttonIndices)
+showPlot(allIndices, prices, (ra, rb), (sa, sb))
